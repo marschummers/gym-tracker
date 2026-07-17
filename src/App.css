@@ -7,11 +7,23 @@
   overflow: hidden;
 }
 
+/* Der komplette obere Abstand (Sicherheitsabstand + normaler Rand) lebt hier, AUSSERHALB
+   des scrollenden Bereichs. So bleibt im scrollenden Bereich selbst kein Innenabstand
+   übrig, durch den hochgescrollter Inhalt unter einer sticky Kopfzeile (z.B. im Training)
+   durchblitzen könnte - position:sticky mit top:0 sitzt dann exakt an der echten Kante. */
 .app-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-top: calc(1rem + env(safe-area-inset-top));
+  overflow: hidden;
+}
+
+.app-content-scroll {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: calc(1rem + env(safe-area-inset-top)) 1rem 1rem;
+  padding: 0 1rem 1rem;
 }
 
 .bottom-nav {
@@ -768,7 +780,7 @@
   z-index: 5;
   background: var(--bg);
   margin: 0 -1rem;
-  padding: 0 1rem 0.2rem;
+  padding: 0.6rem 1rem 0.2rem;
 }
 
 .timer-bar {
