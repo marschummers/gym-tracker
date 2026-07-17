@@ -8,6 +8,7 @@ import WorkoutPage from './pages/WorkoutPage'
 import ExercisesPage from './pages/ExercisesPage'
 import StatsPage from './pages/StatsPage'
 import SettingsPage from './pages/SettingsPage'
+import NavIcon from './components/NavIcon'
 import { cleanupEmptySessions, dedupeExerciseDefs, seedExerciseLibraryIfNeeded } from './db/db'
 import './App.css'
 
@@ -33,18 +34,23 @@ function App() {
       </main>
       <nav className="bottom-nav">
         <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
+          <NavIcon name="home" />
           Übersicht
         </NavLink>
         <NavLink to="/plaene" className={({ isActive }) => (isActive ? 'active' : '')}>
+          <NavIcon name="plans" />
           Pläne
         </NavLink>
         <NavLink to="/uebungen" className={({ isActive }) => (isActive ? 'active' : '')}>
+          <NavIcon name="exercises" />
           Übungen
         </NavLink>
         <NavLink to="/statistik" className={({ isActive }) => (isActive ? 'active' : '')}>
+          <NavIcon name="progress" />
           Fortschritt
         </NavLink>
         <NavLink to="/settings" className={({ isActive }) => (isActive ? 'active' : '')}>
+          <NavIcon name="settings" />
           Einstellungen
         </NavLink>
       </nav>

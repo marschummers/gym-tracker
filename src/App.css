@@ -1,23 +1,21 @@
 .app {
   max-width: 480px;
   margin: 0 auto;
-  min-height: 100svh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .app-content {
   flex: 1;
-  padding: calc(1rem + env(safe-area-inset-top)) 1rem 5rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: calc(1rem + env(safe-area-inset-top)) 1rem 1rem;
 }
 
 .bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 480px;
+  flex-shrink: 0;
   display: flex;
   border-top: 1px solid var(--border);
   background: var(--bg-elevated);
@@ -26,11 +24,15 @@
 
 .bottom-nav a {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
   text-align: center;
-  padding: 0.7rem 0.2rem;
+  padding: 0.55rem 0.2rem;
   text-decoration: none;
   color: var(--text-dim);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 .bottom-nav a.active {
