@@ -10,11 +10,13 @@ function getContext(): AudioContext {
   return ctx
 }
 
-// Muss aus einem User-Klick heraus aufgerufen werden (z.B. beim Satz abhaken), damit
-// iOS Safari die spätere automatische Wiedergabe (aus dem Timer heraus) erlaubt.
+// iOS schläfert den AudioContext wieder ein, sobald der Bildschirm gesperrt wird oder die App
+// länger im Hintergrund war - auch nachdem er schonmal lief. Deswegen nicht nur einmalig beim
+// ersten Klick aufrufen, sondern bei jeder Gelegenheit (Klick, Sekundentakt, Rückkehr in den
+// Vordergrund) erneut versuchen, ihn wach zu halten.
 export function unlockAudio() {
   const c = getContext()
-  if (c.state === 'suspended') c.resume()
+  if (c.state !== 'running') c.resume()
 }
 
 export function playRestEndBeep() {

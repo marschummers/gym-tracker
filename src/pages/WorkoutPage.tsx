@@ -101,6 +101,10 @@ export default function WorkoutPage() {
   useEffect(() => {
     const interval = setInterval(() => {
       setNow(Date.now())
+      // iOS schläfert den Audio-Kontext zwischendurch wieder ein (z.B. bei gesperrtem
+      // Bildschirm) - hier laufend versuchen, ihn wach zu halten, damit der Piepton beim
+      // Pausenende auch beim zweiten, dritten... Mal noch abspielt.
+      unlockAudio()
       if (restEndRef.current !== null) {
         const remaining = restEndRef.current - Date.now()
         if (remaining <= 0) {
@@ -114,6 +118,16 @@ export default function WorkoutPage() {
       }
     }, 1000)
     return () => clearInterval(interval)
+  }, [])
+
+  // Zusätzlich direkt beim Zurückkehren aus dem Hintergrund (Bildschirm entsperrt,
+  // App-Wechsel) versuchen, den Audio-Kontext wach zu machen.
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') unlockAudio()
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [])
 
   function getInput(deId: string, setNumber: number) {
@@ -189,22 +203,24 @@ export default function WorkoutPage() {
     <div className="page">
       <h1>{day.name}</h1>
 
-      <div className="timer-bar">
-        <span className="timer-label">Trainingszeit</span>
-        <span className="timer-value">{formatDuration(elapsed)}</span>
-      </div>
-
-      {restRemaining !== null && (
-        <div className="rest-banner">
-          <span>Pause: {formatDuration(restRemaining)}</span>
-          <div className="rest-banner-track">
-            <div
-              className="rest-banner-fill"
-              style={{ width: `${restTotal ? (restRemaining / restTotal) * 100 : 0}%` }}
-            />
-          </div>
+      <div className="workout-sticky-header">
+        <div className="timer-bar">
+          <span className="timer-label">Trainingszeit</span>
+          <span className="timer-value">{formatDuration(elapsed)}</span>
         </div>
-      )}
+
+        {restRemaining !== null && (
+          <div className="rest-banner">
+            <span>Pause: {formatDuration(restRemaining)}</span>
+            <div className="rest-banner-track">
+              <div
+                className="rest-banner-fill"
+                style={{ width: `${restTotal ? (restRemaining / restTotal) * 100 : 0}%` }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="exercise-list">
         {dayExercises.map((de) => {
