@@ -759,6 +759,7 @@
 
 .field-row .field {
   flex: 1;
+  min-width: 0;
 }
 
 .timer-bar {
