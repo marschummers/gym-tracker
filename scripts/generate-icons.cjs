@@ -1,5 +1,4 @@
-// Erzeugt einfache Platzhalter-App-Icons (einfarbiges Quadrat) als PNG.
-// Kann später durch ein echtes Logo ersetzt werden.
+// Erzeugt App-Icons (Hantel-Symbol in Kupfer auf Graphit) als PNG, ohne externe Bildbibliothek.
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
@@ -33,7 +32,27 @@ function chunk(type, data) {
   return Buffer.concat([lenBuf, typeBuf, data, crcBuf]);
 }
 
-function makePng(size, [r, g, b]) {
+const BG = [28, 27, 25]; // Graphit
+const FG = [201, 136, 75]; // Kupfer hell (gut sichtbar auf kleinen Icons)
+
+// true, wenn Pixel (x,y) zur Hantel-Silhouette gehört: mittige Stange + zwei Gewichtsscheiben.
+function isBarbellPixel(x, y, size) {
+  const cy = size / 2;
+  const barHalfHeight = size * 0.045;
+  const barX1 = size * 0.16;
+  const barX2 = size * 0.84;
+  if (x >= barX1 && x <= barX2 && Math.abs(y - cy) <= barHalfHeight) return true;
+
+  const plateR = size * 0.17;
+  const plateInnerR = size * 0.075;
+  for (const cx of [size * 0.205, size * 0.795]) {
+    const d = Math.hypot(x - cx, y - cy);
+    if (d <= plateR && d >= plateInnerR) return true;
+  }
+  return false;
+}
+
+function makePng(size) {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(size, 0);
   ihdr.writeUInt32BE(size, 4);
@@ -49,6 +68,7 @@ function makePng(size, [r, g, b]) {
     const rowStart = y * (rowLen + 1);
     raw[rowStart] = 0; // filter: none
     for (let x = 0; x < size; x++) {
+      const [r, g, b] = isBarbellPixel(x + 0.5, y + 0.5, size) ? FG : BG;
       const px = rowStart + 1 + x * 3;
       raw[px] = r;
       raw[px + 1] = g;
@@ -67,6 +87,6 @@ function makePng(size, [r, g, b]) {
 }
 
 const outDir = path.join(__dirname, '..', 'public');
-fs.writeFileSync(path.join(outDir, 'icon-192.png'), makePng(192, [28, 27, 25]));
-fs.writeFileSync(path.join(outDir, 'icon-512.png'), makePng(512, [28, 27, 25]));
+fs.writeFileSync(path.join(outDir, 'icon-192.png'), makePng(192));
+fs.writeFileSync(path.join(outDir, 'icon-512.png'), makePng(512));
 console.log('Icons erzeugt.');
