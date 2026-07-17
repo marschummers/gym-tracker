@@ -86,7 +86,9 @@ function makePng(size) {
   ]);
 }
 
+// Dateinamen versioniert (v2), damit iOS' hartnäckiger Homescreen-Icon-Cache (der an der
+// URL hängt, nicht am Inhalt) beim Ändern des Icons gezwungen ist, neu zu laden.
 const outDir = path.join(__dirname, '..', 'public');
-fs.writeFileSync(path.join(outDir, 'icon-192.png'), makePng(192));
-fs.writeFileSync(path.join(outDir, 'icon-512.png'), makePng(512));
+fs.writeFileSync(path.join(outDir, 'icon-192-v2.png'), makePng(192));
+fs.writeFileSync(path.join(outDir, 'icon-512-v2.png'), makePng(512));
 console.log('Icons erzeugt.');
