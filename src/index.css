@@ -1,0 +1,62 @@
+:root {
+  --bg: #1c1b19;
+  --bg-elevated: #262421;
+  --text: #ede8df;
+  --text-dim: #9a9186;
+  --border: #3a3733;
+  --accent: #9c6a35;
+  --accent-text: #17130f;
+  --accent-2: #6c8a94;
+  --danger: #ef4444;
+  --good: #7c9a6f;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  font: 16px/1.4 system-ui, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: dark;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+h1 {
+  font-size: 1.6rem;
+  margin: 0.4rem 0 1rem;
+}
+
+h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.6rem;
+  color: var(--text-dim);
+}
+
+h3 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+input,
+select {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+}
+
+a {
+  color: inherit;
+}
