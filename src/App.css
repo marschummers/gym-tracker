@@ -790,11 +790,25 @@
   color: var(--accent-text);
   text-align: center;
   border-radius: 10px;
-  padding: 0.7rem;
+  padding: 0.6rem 0.7rem 0.55rem;
   margin-bottom: 0.8rem;
   font-family: var(--font-mono);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.rest-banner-track {
+  margin-top: 0.4rem;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.rest-banner-fill {
+  height: 100%;
+  background: var(--accent-text);
+  transition: width 1s linear;
 }
 
 .exercise-list {

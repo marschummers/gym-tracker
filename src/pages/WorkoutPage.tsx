@@ -35,6 +35,7 @@ export default function WorkoutPage() {
 
   const [now, setNow] = useState(Date.now())
   const [restRemaining, setRestRemaining] = useState<number | null>(null)
+  const [restTotal, setRestTotal] = useState<number | null>(null)
   const restEndRef = useRef<number | null>(null)
 
   const [inputs, setInputs] = useState<Record<string, { weight: string; reps: string }>>({})
@@ -104,6 +105,7 @@ export default function WorkoutPage() {
         const remaining = restEndRef.current - Date.now()
         if (remaining <= 0) {
           setRestRemaining(null)
+          setRestTotal(null)
           restEndRef.current = null
           playRestEndBeep()
         } else {
@@ -142,6 +144,7 @@ export default function WorkoutPage() {
     if (restSeconds > 0) {
       restEndRef.current = Date.now() + restSeconds * 1000
       setRestRemaining(restSeconds * 1000)
+      setRestTotal(restSeconds * 1000)
     }
   }
 
@@ -192,7 +195,15 @@ export default function WorkoutPage() {
       </div>
 
       {restRemaining !== null && (
-        <div className="rest-banner">Pause: {formatDuration(restRemaining)}</div>
+        <div className="rest-banner">
+          <span>Pause: {formatDuration(restRemaining)}</span>
+          <div className="rest-banner-track">
+            <div
+              className="rest-banner-fill"
+              style={{ width: `${restTotal ? (restRemaining / restTotal) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
       )}
 
       <div className="exercise-list">
