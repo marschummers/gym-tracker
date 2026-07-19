@@ -13,6 +13,7 @@ import {
 import LineChart from '../components/LineChart'
 import BarSparkline from '../components/BarSparkline'
 import WeekBarChart from '../components/WeekBarChart'
+import DateSelect from '../components/DateSelect'
 import { computeCurrentPrs, computeWeeklyProgress } from '../lib/progress'
 import { computeCurrentWeekAverage, computeWeeklyWeightAverages } from '../lib/bodyWeight'
 import { formatDurationEstimate } from '../lib/exercise'
@@ -345,14 +346,14 @@ export default function StatsPage() {
 
           <div className="form-section date-range-section">
             <div className="field-row">
-              <label className="field date-field">
+              <div className="field date-field">
                 <span>Von</span>
-                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-              </label>
-              <label className="field date-field">
+                <DateSelect value={dateFrom} onChange={setDateFrom} />
+              </div>
+              <div className="field date-field">
                 <span>Bis</span>
-                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-              </label>
+                <DateSelect value={dateTo} onChange={setDateTo} />
+              </div>
             </div>
             <div className="field-row">
               <button className="secondary-button" onClick={resetToCurrentWeek}>
@@ -455,10 +456,10 @@ export default function StatsPage() {
           <div className="form-section">
             <h2>Gewicht eintragen</h2>
             <div className="field-row">
-              <label className="field date-field">
+              <div className="field date-field">
                 <span>Datum</span>
-                <input type="date" value={weightDate} onChange={(e) => setWeightDate(e.target.value)} />
-              </label>
+                <DateSelect value={weightDate} onChange={setWeightDate} />
+              </div>
               <label className="field">
                 <span>Gewicht (kg)</span>
                 <input

@@ -796,16 +796,23 @@
   min-width: 0;
 }
 
-/* type="date" hält sich auf iOS nicht zuverlässig an width:100% - das native Steuerelement
-   kann breiter sein, als der Container erlaubt, egal welche Mindestbreite man setzt.
-   Deswegen bekommt jedes Datumsfeld immer die volle Zeilenbreite (eigene Zeile) statt
-   nebeneinander mit einem zweiten Feld zu konkurrieren. Selektor muss mindestens so
-   spezifisch sein wie ".field-row .field" oben, sonst gewinnt dessen flex:1. */
+/* Datumsfeld (drei Selects: Tag/Monat/Jahr) bekommt immer die volle Zeilenbreite, damit
+   genug Platz für den Monatsnamen bleibt. Selektor muss mindestens so spezifisch sein wie
+   ".field-row .field" oben, sonst gewinnt dessen flex:1. */
 .field-row .date-field {
   flex: 0 0 100%;
-  max-width: 100%;
   min-width: 0;
-  overflow: hidden;
+}
+
+.date-select-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.date-select-row select {
+  width: auto;
+  flex: 1;
+  min-width: 0;
 }
 
 .workout-sticky-header {
