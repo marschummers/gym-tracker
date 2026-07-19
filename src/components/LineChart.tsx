@@ -6,6 +6,12 @@ interface Point {
   y: number
 }
 
+// Rundet auf max. 2 Nachkommastellen (Divisionen wie beim Wochendurchschnitt erzeugen sonst
+// Fließkomma-Artefakte wie 84.10000000000001).
+function formatValue(value: number): string {
+  return (Math.round(value * 100) / 100).toString()
+}
+
 export default function LineChart({
   points,
   color,
@@ -80,7 +86,7 @@ export default function LineChart({
     <div className="line-chart">
       <div className="line-chart-peak">
         <span className="line-chart-peak-value">
-          {peak.y}
+          {formatValue(peak.y)}
           {unit}
         </span>
         <span className="line-chart-peak-date">{formatShortDate(peak.x)}</span>
@@ -121,7 +127,7 @@ export default function LineChart({
       </svg>
       {active !== null && (
         <div className="line-chart-tooltip">
-          {formatShortDate(points[active].x)}: {points[active].y}
+          {formatShortDate(points[active].x)}: {formatValue(points[active].y)}
           {unit}
         </div>
       )}

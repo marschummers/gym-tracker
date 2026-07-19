@@ -22,6 +22,7 @@
 .app-content-scroll {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   padding: 0 1rem 1rem;
 }
@@ -767,6 +768,14 @@
 .field-row {
   display: flex;
   gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+/* type="date" hält sich auf iOS nicht an width:100% und braucht eine Mindestbreite -
+   reicht der Platz in der Zeile nicht (z.B. zwei Datumsfelder nebeneinander), soll die
+   Zeile lieber umbrechen als dass ein Feld über den Bildschirmrand hinausragt. */
+.date-field {
+  min-width: 150px;
 }
 
 .field-row .field {

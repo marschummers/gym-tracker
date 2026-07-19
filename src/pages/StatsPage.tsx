@@ -58,6 +58,10 @@ export default function StatsPage() {
   const weeklyWeightAverages = useLiveQuery(() => computeWeeklyWeightAverages(), [])
   const currentWeekWeightAvg = useLiveQuery(() => computeCurrentWeekAverage(), [])
   const appSettings = useLiveQuery(() => db.appSettings.get('singleton'), [])
+  const bodyWeightEntries = useLiveQuery(
+    () => db.bodyWeightEntries.orderBy('dateStr').reverse().toArray(),
+    [],
+  )
 
   useEffect(() => {
     if (appSettings?.targetWeight !== undefined) setTargetWeightInput(String(appSettings.targetWeight))
@@ -341,11 +345,11 @@ export default function StatsPage() {
 
           <div className="form-section date-range-section">
             <div className="field-row">
-              <label className="field">
+              <label className="field date-field">
                 <span>Von</span>
                 <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
               </label>
-              <label className="field">
+              <label className="field date-field">
                 <span>Bis</span>
                 <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
               </label>
@@ -451,7 +455,7 @@ export default function StatsPage() {
           <div className="form-section">
             <h2>Gewicht eintragen</h2>
             <div className="field-row">
-              <label className="field">
+              <label className="field date-field">
                 <span>Datum</span>
                 <input type="date" value={weightDate} onChange={(e) => setWeightDate(e.target.value)} />
               </label>
@@ -510,6 +514,22 @@ export default function StatsPage() {
             <p className="progress-card-title">Wochendurchschnitt-Verlauf</p>
             <LineChart points={weeklyWeightAverages ?? []} color="var(--accent-2)" unit=" kg" />
           </div>
+
+          {bodyWeightEntries && bodyWeightEntries.length > 0 && (
+            <div className="progress-card">
+              <p className="progress-card-title">Einträge</p>
+              <div className="pr-list">
+                {bodyWeightEntries.map((entry) => (
+                  <div key={entry.id} className="pr-row">
+                    <span className="pr-name">
+                      {formatDate(new Date(`${entry.dateStr}T00:00:00`).getTime())}
+                    </span>
+                    <span className="pr-value">{entry.weight} kg</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
