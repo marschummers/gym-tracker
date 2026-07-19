@@ -39,6 +39,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // Fester Cache-Namens-Präfix, damit der "App aktualisieren"-Button (siehe
+        // src/lib/pwaUpdate.tsx) beim Aufräumen zuverlässig NUR die eigenen Caches trifft
+        // und nicht die einer anderen App auf derselben Domain (marschummers.github.io).
+        cacheId: 'gym-tracker',
       },
     }),
   ],
