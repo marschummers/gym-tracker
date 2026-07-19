@@ -791,15 +791,18 @@
   flex-wrap: wrap;
 }
 
-/* type="date" hält sich auf iOS nicht an width:100% und braucht eine Mindestbreite -
-   reicht der Platz in der Zeile nicht (z.B. zwei Datumsfelder nebeneinander), soll die
-   Zeile lieber umbrechen als dass ein Feld über den Bildschirmrand hinausragt. */
-.date-field {
-  min-width: 150px;
-}
-
 .field-row .field {
   flex: 1;
+  min-width: 0;
+}
+
+/* type="date" hält sich auf iOS nicht zuverlässig an width:100% - das native Steuerelement
+   kann breiter sein, als der Container erlaubt, egal welche Mindestbreite man setzt.
+   Deswegen bekommt jedes Datumsfeld immer die volle Zeilenbreite (eigene Zeile) statt
+   nebeneinander mit einem zweiten Feld zu konkurrieren. Selektor muss mindestens so
+   spezifisch sein wie ".field-row .field" oben, sonst gewinnt dessen flex:1. */
+.field-row .date-field {
+  flex-basis: 100%;
   min-width: 0;
 }
 
