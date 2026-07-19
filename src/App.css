@@ -802,8 +802,10 @@
    nebeneinander mit einem zweiten Feld zu konkurrieren. Selektor muss mindestens so
    spezifisch sein wie ".field-row .field" oben, sonst gewinnt dessen flex:1. */
 .field-row .date-field {
-  flex-basis: 100%;
+  flex: 0 0 100%;
+  max-width: 100%;
   min-width: 0;
+  overflow: hidden;
 }
 
 .workout-sticky-header {

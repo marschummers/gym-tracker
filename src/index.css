@@ -57,7 +57,18 @@ select {
   border-radius: 8px;
   padding: 0.6rem 0.7rem;
   width: 100%;
+  max-width: 100%;
   min-width: 0;
+  box-sizing: border-box;
+}
+
+/* iOS ignoriert bei type="date" (und verwandten Typen) manchmal width, obwohl der Rest der
+   Regel oben greift - die sichtbare Box wird trotzdem breiter als der Container gerendert.
+   max-width wirkt als harte Obergrenze, an die sich WebKit zuverlässiger hält. */
+input[type='date'],
+input[type='time'],
+input[type='datetime-local'] {
+  max-width: 100%;
 }
 
 a {
