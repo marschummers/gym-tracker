@@ -8,7 +8,12 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' statt 'autoUpdate': iOS erkennt eine neue Version manchmal nicht
+      // zuverlässig von selbst. Die App registriert den Service Worker deshalb selbst
+      // (injectRegister: false) und zeigt einen Button zum manuellen Aktualisieren an,
+      // der auch jederzeit einen frischen Check erzwingen kann.
+      registerType: 'prompt',
+      injectRegister: false,
       includeAssets: ['favicon.svg'],
       manifest: {
         name: 'Gym Tracker',

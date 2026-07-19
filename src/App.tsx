@@ -9,6 +9,8 @@ import ExercisesPage from './pages/ExercisesPage'
 import StatsPage from './pages/StatsPage'
 import SettingsPage from './pages/SettingsPage'
 import NavIcon from './components/NavIcon'
+import UpdateBanner from './components/UpdateBanner'
+import { PwaUpdateProvider } from './lib/pwaUpdate'
 import { cleanupEmptySessions, dedupeExerciseDefs, seedExerciseLibraryIfNeeded } from './db/db'
 import './App.css'
 
@@ -19,44 +21,47 @@ function App() {
   }, [])
 
   return (
-    <div className="app">
-      <main className="app-content">
-        <div className="app-content-scroll">
-          <Routes>
-            <Route path="/" element={<OverviewPage />} />
-            <Route path="/plaene" element={<PlansPage />} />
-            <Route path="/plans/:planId" element={<PlanPage />} />
-            <Route path="/plans/:planId/days/:dayId" element={<DayPage />} />
-            <Route path="/plans/:planId/days/:dayId/workout" element={<WorkoutPage />} />
-            <Route path="/uebungen" element={<ExercisesPage />} />
-            <Route path="/statistik" element={<StatsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-          </Routes>
-        </div>
-      </main>
-      <nav className="bottom-nav">
-        <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
-          <NavIcon name="home" />
-          Übersicht
-        </NavLink>
-        <NavLink to="/plaene" className={({ isActive }) => (isActive ? 'active' : '')}>
-          <NavIcon name="plans" />
-          Pläne
-        </NavLink>
-        <NavLink to="/uebungen" className={({ isActive }) => (isActive ? 'active' : '')}>
-          <NavIcon name="exercises" />
-          Übungen
-        </NavLink>
-        <NavLink to="/statistik" className={({ isActive }) => (isActive ? 'active' : '')}>
-          <NavIcon name="progress" />
-          Fortschritt
-        </NavLink>
-        <NavLink to="/settings" className={({ isActive }) => (isActive ? 'active' : '')}>
-          <NavIcon name="settings" />
-          Einstellungen
-        </NavLink>
-      </nav>
-    </div>
+    <PwaUpdateProvider>
+      <div className="app">
+        <main className="app-content">
+          <UpdateBanner />
+          <div className="app-content-scroll">
+            <Routes>
+              <Route path="/" element={<OverviewPage />} />
+              <Route path="/plaene" element={<PlansPage />} />
+              <Route path="/plans/:planId" element={<PlanPage />} />
+              <Route path="/plans/:planId/days/:dayId" element={<DayPage />} />
+              <Route path="/plans/:planId/days/:dayId/workout" element={<WorkoutPage />} />
+              <Route path="/uebungen" element={<ExercisesPage />} />
+              <Route path="/statistik" element={<StatsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Routes>
+          </div>
+        </main>
+        <nav className="bottom-nav">
+          <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
+            <NavIcon name="home" />
+            Übersicht
+          </NavLink>
+          <NavLink to="/plaene" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <NavIcon name="plans" />
+            Pläne
+          </NavLink>
+          <NavLink to="/uebungen" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <NavIcon name="exercises" />
+            Übungen
+          </NavLink>
+          <NavLink to="/statistik" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <NavIcon name="progress" />
+            Fortschritt
+          </NavLink>
+          <NavLink to="/settings" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <NavIcon name="settings" />
+            Einstellungen
+          </NavLink>
+        </nav>
+      </div>
+    </PwaUpdateProvider>
   )
 }
 

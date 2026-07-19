@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { cleanupEmptySessions, db } from '../db/db'
+import { usePwaUpdate } from '../lib/pwaUpdate'
 
 const EXPORT_VERSION = 1
 
@@ -43,6 +44,13 @@ export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [status, setStatus] = useState<string | null>(null)
   const [cleanupStatus, setCleanupStatus] = useState<string | null>(null)
+  const { updateNow } = usePwaUpdate()
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
+
+  async function handleUpdateClick() {
+    setCheckingUpdate(true)
+    await updateNow()
+  }
 
   async function handleCleanupNow() {
     const removed = await cleanupEmptySessions(0)
@@ -154,6 +162,17 @@ export default function SettingsPage() {
           }}
         />
         {status && <p className="hint">{status}</p>}
+      </div>
+
+      <div className="form-section">
+        <h2>App-Version</h2>
+        <p className="hint">
+          Falls neue Funktionen nicht ankommen (z.B. nach einem Update), hiermit gezielt nach
+          einer neuen Version suchen und die App neu laden.
+        </p>
+        <button className="secondary-button" onClick={handleUpdateClick} disabled={checkingUpdate}>
+          {checkingUpdate ? 'Suche nach Update…' : 'App aktualisieren'}
+        </button>
       </div>
 
       <div className="form-section">
