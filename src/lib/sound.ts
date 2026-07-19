@@ -31,17 +31,18 @@ function writeWavHeader(
   view.setUint32(40, dataSize, true)
 }
 
-// 1 Sekunde, fast lautlos (Amplitude 1 von 128 - keine reine Digital-Stille, damit iOS es
-// sicher als "spielt Audio ab" erkennt), zum Endlos-Loopen. Ein aktiv abspielendes <audio>-
-// Element hält die Seite im Hintergrund (App-Wechsel, gesperrter Bildschirm) am Laufen -
-// ohne das pausiert iOS die komplette JavaScript-Ausführung inkl. des Sekundentakts.
+// 8 Sekunden echte Stille zum Endlos-Loopen. Ein aktiv abspielendes <audio>-Element hält die
+// Seite im Hintergrund (App-Wechsel, gesperrter Bildschirm) am Laufen - ohne das pausiert iOS
+// die komplette JavaScript-Ausführung inkl. des Sekundentakts. Wichtig: konstante Werte (echte
+// Stille), keine wechselnden Sample-Werte - eine frühere Version mit abwechselnden Werten
+// ergab technisch eine hochfrequente, hörbare Wellenform statt Stille.
 function createKeepAliveAudioUrl(): string {
   const sampleRate = 8000
-  const numSamples = sampleRate
+  const numSamples = sampleRate * 8
   const buffer = new ArrayBuffer(44 + numSamples)
   const view = new DataView(buffer)
   writeWavHeader(view, numSamples, sampleRate, 8)
-  for (let i = 0; i < numSamples; i++) view.setUint8(44 + i, i % 2 === 0 ? 127 : 129)
+  for (let i = 0; i < numSamples; i++) view.setUint8(44 + i, 128)
   return URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }))
 }
 
