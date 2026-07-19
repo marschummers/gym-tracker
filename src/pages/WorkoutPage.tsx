@@ -166,6 +166,7 @@ export default function WorkoutPage() {
   // bereits laufende Pause läuft einfach unbeeinflusst weiter.
   async function skipSet(deId: string, exerciseDefId: string, setNumber: number) {
     if (!sessionId) return
+    unlockAudio()
     await db.setEntries.add({
       id: newId(),
       sessionId,
