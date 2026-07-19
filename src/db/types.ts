@@ -62,6 +62,10 @@ export interface SetEntry {
   weight: number;
   reps: number;
   completedAt: number;
+  // Satz wurde übersprungen statt ausgeführt (z.B. Gerät belegt, keine Zeit mehr). Zählt für
+  // den Fortschritt der Übung ("3/3 erledigt"), fließt aber nicht in Gewichts-/Volumen-/
+  // PR-Auswertungen ein.
+  skipped?: boolean;
 }
 
 // Ein Körpergewicht-Eintrag (z.B. morgens nach dem Aufstehen). Ein Eintrag pro Kalendertag,

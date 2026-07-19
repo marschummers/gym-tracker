@@ -61,7 +61,7 @@ export default function WorkoutPage() {
       const entries = await db.setEntries
         .where('exerciseDefId')
         .equals(activeId)
-        .filter((e) => e.sessionId !== sessionId)
+        .filter((e) => e.sessionId !== sessionId && !e.skipped)
         .toArray()
       if (entries.length === 0) continue
       const latestCompletedAt = Math.max(...entries.map((e) => e.completedAt))
@@ -160,6 +160,23 @@ export default function WorkoutPage() {
       setRestRemaining(restSeconds * 1000)
       setRestTotal(restSeconds * 1000)
     }
+  }
+
+  // Satz überspringen: zählt für "X/Y erledigt" mit, aber löst bewusst KEINE Pause aus - eine
+  // bereits laufende Pause läuft einfach unbeeinflusst weiter.
+  async function skipSet(deId: string, exerciseDefId: string, setNumber: number) {
+    if (!sessionId) return
+    await db.setEntries.add({
+      id: newId(),
+      sessionId,
+      dayExerciseId: deId,
+      exerciseDefId,
+      setNumber,
+      weight: 0,
+      reps: 0,
+      completedAt: Date.now(),
+      skipped: true,
+    })
   }
 
   async function finishWorkout() {
@@ -263,7 +280,11 @@ export default function WorkoutPage() {
                     .sort((a, b) => a.setNumber - b.setNumber)
                     .map((s) => (
                       <li key={s.id}>
-                        Satz {s.setNumber}: {s.weight} kg × {s.reps} Wdh.
+                        {s.skipped ? (
+                          <>Satz {s.setNumber}: Übersprungen</>
+                        ) : (
+                          <>Satz {s.setNumber}: {s.weight} kg × {s.reps} Wdh.</>
+                        )}
                       </li>
                     ))}
                 </ul>
@@ -293,6 +314,12 @@ export default function WorkoutPage() {
                       onChange={(e) => updateInput(de.id, nextSetNumber, 'reps', e.target.value)}
                     />
                     <button onClick={() => logSet(de.id, activeId, nextSetNumber, de.restSeconds)}>✓</button>
+                    <button
+                      className="skip-button"
+                      onClick={() => skipSet(de.id, activeId, nextSetNumber)}
+                    >
+                      Skip
+                    </button>
                   </div>
                 </>
               ) : (

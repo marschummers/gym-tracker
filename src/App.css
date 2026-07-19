@@ -949,6 +949,17 @@
   flex-shrink: 0;
 }
 
+.set-input-row .skip-button {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: auto;
+  height: 2.6rem;
+  padding: 0 0.6rem;
+  font-size: 0.8rem;
+}
+
 .finish-button {
   background: var(--danger);
   color: #fff;

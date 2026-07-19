@@ -20,7 +20,7 @@ export async function computeWeeklyProgress(): Promise<WeeklyProgress> {
 
   const entries = await db.setEntries
     .toCollection()
-    .filter((e) => sessionIds.has(e.sessionId))
+    .filter((e) => sessionIds.has(e.sessionId) && !e.skipped)
     .toArray()
 
   const dailyVolume = new Array(7).fill(0)
@@ -53,7 +53,7 @@ export interface PrEntry {
 
 // Für jede Übung: das aktuell höchste je bewegte Gewicht + wie viel mehr als beim vorherigen Rekord.
 export async function computeCurrentPrs(limit = 5): Promise<PrEntry[]> {
-  const allEntries = await db.setEntries.toArray()
+  const allEntries = (await db.setEntries.toArray()).filter((e) => !e.skipped)
   if (allEntries.length === 0) return []
 
   const sessionIds = [...new Set(allEntries.map((e) => e.sessionId))]

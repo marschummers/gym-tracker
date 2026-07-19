@@ -22,7 +22,7 @@ interface ExerciseRow {
   exerciseDefId: string
   exerciseName: string
   order: number
-  sets: { id: string; setNumber: number; weight: number; reps: number }[]
+  sets: { id: string; setNumber: number; weight: number; reps: number; skipped?: boolean }[]
 }
 
 interface SessionGroup {
@@ -32,8 +32,8 @@ interface SessionGroup {
   exercises: ExerciseRow[]
 }
 
-function formatSets(sets: { weight: number; reps: number }[]): string {
-  return sets.map((s) => `${s.weight}kg×${s.reps}`).join(', ')
+function formatSets(sets: { weight: number; reps: number; skipped?: boolean }[]): string {
+  return sets.map((s) => (s.skipped ? 'Skipped' : `${s.weight}kg×${s.reps}`)).join(', ')
 }
 
 const FREQUENCY_BUCKETS = 8
@@ -132,7 +132,7 @@ export default function StatsPage() {
         }
         sessionGroup.exercises.push(exerciseRow)
       }
-      exerciseRow.sets.push({ id: e.id, setNumber: e.setNumber, weight: e.weight, reps: e.reps })
+      exerciseRow.sets.push({ id: e.id, setNumber: e.setNumber, weight: e.weight, reps: e.reps, skipped: e.skipped })
     }
 
     const result = [...groups.values()]
@@ -175,6 +175,7 @@ export default function StatsPage() {
 
     const maxBySession = new Map<string, number>()
     for (const e of relatedEntries) {
+      if (e.skipped) continue
       const session = sessionById.get(e.sessionId)
       if (!session) continue
       if (rangeStart !== null && session.startedAt < rangeStart) continue
@@ -196,7 +197,7 @@ export default function StatsPage() {
     const inRange = allSessions.filter((s) => rangeStart === null || s.startedAt >= rangeStart)
     const sessionIdsInRange = new Set(inRange.map((s) => s.id))
 
-    const allEntries = await db.setEntries.toArray()
+    const allEntries = (await db.setEntries.toArray()).filter((e) => !e.skipped)
     const entriesInRange = allEntries.filter((e) => sessionIdsInRange.has(e.sessionId))
     const totalVolume = entriesInRange.reduce((sum, e) => sum + e.weight * e.reps, 0)
 
