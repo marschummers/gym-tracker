@@ -5,46 +5,23 @@
     "version": "1.0.0"
   },
   "servers": [
-    { "url": "https://ielieyybudoyicedztct.supabase.co/rest/v1" }
+    { "url": "https://ielieyybudoyicedztct.supabase.co/functions/v1" }
   ],
   "paths": {
-    "/coach_snapshot": {
+    "/coach-snapshot": {
       "get": {
         "operationId": "getLatestCoachSnapshot",
         "summary": "Holt den neuesten Trainings- und Körperdaten-Stand aus der Gym-App",
-        "parameters": [
-          {
-            "name": "select",
-            "in": "query",
-            "required": true,
-            "schema": { "type": "string", "default": "content,created_at" }
-          },
-          {
-            "name": "order",
-            "in": "query",
-            "required": true,
-            "schema": { "type": "string", "default": "created_at.desc" }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": true,
-            "schema": { "type": "integer", "default": 1 }
-          }
-        ],
         "responses": {
           "200": {
-            "description": "Liste mit dem neuesten Snapshot (ein Eintrag)",
+            "description": "Der neueste Snapshot",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "content": { "type": "string" },
-                      "created_at": { "type": "string" }
-                    }
+                  "type": "object",
+                  "properties": {
+                    "content": { "type": "string" },
+                    "created_at": { "type": "string" }
                   }
                 }
               }
