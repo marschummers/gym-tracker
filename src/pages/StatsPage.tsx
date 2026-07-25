@@ -17,6 +17,7 @@ import DateSelect from '../components/DateSelect'
 import { computeCurrentPrs, computeWeeklyProgress } from '../lib/progress'
 import { computeCurrentWeekAverage, computeWeeklyWeightAverages } from '../lib/bodyWeight'
 import { formatDurationEstimate } from '../lib/exercise'
+import { uploadCoachSnapshot } from '../lib/coachSnapshot'
 
 interface ExerciseRow {
   exerciseDefId: string
@@ -48,6 +49,18 @@ export default function StatsPage() {
 
   const [selectedExerciseId, setSelectedExerciseId] = useState('')
   const [range, setRange] = useState<RangeKey>('12w')
+
+  const [coachUploadStatus, setCoachUploadStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle')
+
+  async function handleCoachUpload() {
+    setCoachUploadStatus('uploading')
+    try {
+      await uploadCoachSnapshot()
+      setCoachUploadStatus('done')
+    } catch {
+      setCoachUploadStatus('error')
+    }
+  }
 
   const weeklyProgress = useLiveQuery(() => computeWeeklyProgress(), [])
   const prs = useLiveQuery(() => computeCurrentPrs(5), [])
@@ -364,6 +377,18 @@ export default function StatsPage() {
                 Als Datei exportieren
               </button>
             </div>
+          </div>
+
+          <div className="form-section">
+            <button
+              className="secondary-button"
+              onClick={handleCoachUpload}
+              disabled={coachUploadStatus === 'uploading'}
+            >
+              {coachUploadStatus === 'uploading' ? 'Wird hochgeladen…' : 'Für Coach hochladen'}
+            </button>
+            {coachUploadStatus === 'done' && <p className="hint">Hochgeladen – bereit für den Check-in.</p>}
+            {coachUploadStatus === 'error' && <p className="hint">Hochladen fehlgeschlagen. Nochmal versuchen?</p>}
           </div>
 
           <div className="stats-list">
