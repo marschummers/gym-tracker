@@ -379,7 +379,7 @@ export default function StatsPage() {
             </div>
           </div>
 
-          <div className="form-section">
+          <div className="form-section coach-upload-section">
             <button
               className="secondary-button"
               onClick={handleCoachUpload}

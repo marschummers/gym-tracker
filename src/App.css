@@ -723,6 +723,10 @@
   flex: 1;
 }
 
+.coach-upload-section {
+  margin-bottom: 1rem;
+}
+
 .stats-list {
   display: flex;
   flex-direction: column;

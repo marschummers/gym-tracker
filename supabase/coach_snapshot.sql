@@ -18,12 +18,12 @@ alter table coach_snapshot enable row level security;
 create policy "anon darf snapshot anlegen"
 on coach_snapshot
 for insert
-to anon
+to public
 with check (id = 'latest');
 
 create policy "anon darf snapshot aktualisieren"
 on coach_snapshot
 for update
-to anon
+to public
 using (id = 'latest')
 with check (id = 'latest');
