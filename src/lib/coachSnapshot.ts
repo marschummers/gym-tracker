@@ -1,10 +1,11 @@
 import { db } from '../db/db'
-import { formatDate } from './date'
+import { formatDate, getMonday } from './date'
 import { computeCurrentPrs } from './progress'
 import { computeWeeklyWeightAverages } from './bodyWeight'
 import { supabase } from './supabaseClient'
 
 const TRAINING_HISTORY_DAYS = 90
+const BODY_WEIGHT_WEEKS = 5
 
 async function buildSnapshotText(): Promise<string> {
   const lines: string[] = []
@@ -19,14 +20,24 @@ async function buildSnapshotText(): Promise<string> {
     lines.push('')
   }
 
-  const bodyEntries = await db.bodyWeightEntries.orderBy('dateStr').toArray()
+  // Letzte 5 Kalenderwochen (aktuelle Woche + 4 davor), oder weniger falls noch nicht so viel
+  // erfasst wurde - hält den Snapshot fokussiert statt mit der kompletten Historie zu wachsen.
+  const weightWindowStart = new Date(getMonday(new Date(now)))
+  weightWindowStart.setDate(weightWindowStart.getDate() - (BODY_WEIGHT_WEEKS - 1) * 7)
+  const weightWindowStartStr = weightWindowStart.toISOString().slice(0, 10)
+
+  const bodyEntries = (await db.bodyWeightEntries.orderBy('dateStr').toArray()).filter(
+    (e) => e.dateStr >= weightWindowStartStr,
+  )
   if (bodyEntries.length > 0) {
-    lines.push('Körpergewicht – einzelne Einträge:')
+    lines.push(`Körpergewicht – einzelne Einträge (letzte ${BODY_WEIGHT_WEEKS} Wochen):`)
     for (const e of bodyEntries) lines.push(`- ${e.dateStr}: ${e.weight} kg`)
     lines.push('')
+  }
 
-    const weeklyAvg = await computeWeeklyWeightAverages()
-    lines.push('Körpergewicht – Wochendurchschnitt:')
+  const weeklyAvg = (await computeWeeklyWeightAverages()).slice(-BODY_WEIGHT_WEEKS)
+  if (weeklyAvg.length > 0) {
+    lines.push(`Körpergewicht – Wochendurchschnitt (letzte ${BODY_WEIGHT_WEEKS} Wochen):`)
     for (const w of weeklyAvg) lines.push(`- Woche ab ${formatDate(w.x)}: ${w.y.toFixed(2)} kg`)
     lines.push('')
   }
