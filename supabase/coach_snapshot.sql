@@ -1,19 +1,22 @@
 -- Im Supabase-Dashboard unter "SQL Editor" einfügen und ausführen (einmalig).
 --
--- Tabelle enthält immer nur EINE Zeile (id = 'latest') mit dem aktuellen Trainings-/
--- Körperdaten-Stand als Text. Der öffentliche ("publishable"/anon) Key, den die Gym-App
--- benutzt, darf diese Zeile laut den Regeln unten NUR schreiben (löschen + neu anlegen) -
--- lesen kann er sie nicht (es gibt bewusst keine SELECT-Regel). Zum Lesen (für die
--- ChatGPT-Action) wird stattdessen der geheime "service_role"-Key verwendet, der nirgendwo im
--- App-Code steht.
+-- Löschen/Aktualisieren einer bestehenden Zeile über den öffentlichen Key schlägt an einer
+-- Supabase-/Postgres-Eigenheit fehl (eine dem Anschein nach korrekte DELETE/UPDATE-Regel greift
+-- nicht) - ähnliches Verhalten wie das frühere RLS-Problem im Stallmanager ("Horses"-Tabelle).
+-- Deshalb hier ein Ansatz, der nie eine bestehende Zeile anfasst: Jeder Upload legt einfach eine
+-- neue Zeile an (reines INSERT, das zuverlässig funktioniert). Gelesen wird später - über den
+-- geheimen "service_role"-Key, der nirgendwo im App-Code steht - einfach die neueste Zeile
+-- (order by created_at desc limit 1). Alte Zeilen sammeln sich harmlos an; bei Bedarf später per
+-- service_role aufräumbar.
 --
--- Kein "Upsert" (ON CONFLICT DO UPDATE): Postgres braucht dafür zusätzlich eine
--- Leseberechtigung, um vorab zu prüfen, ob schon eine Zeile existiert - die haben wir bewusst
--- nicht vergeben. Die App löscht die alte Zeile deshalb explizit und legt danach eine neue an.
+-- Der öffentliche ("publishable"/anon) Key, den die Gym-App benutzt, darf laut der Regel unten
+-- NUR neue Zeilen anlegen - lesen kann er nichts (es gibt bewusst keine SELECT-Regel).
 
-create table if not exists coach_snapshot (
-  id text primary key,
-  updated_at timestamptz not null default now(),
+drop table if exists coach_snapshot;
+
+create table coach_snapshot (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
   content text not null
 );
 
@@ -23,10 +26,4 @@ create policy "anon darf snapshot anlegen"
 on coach_snapshot
 for insert
 to public
-with check (id = 'latest');
-
-create policy "anon darf snapshot loeschen"
-on coach_snapshot
-for delete
-to public
-using (id = 'latest');
+with check (true);
