@@ -95,10 +95,16 @@ async function buildSnapshotText(): Promise<string> {
 // Baut den aktuellen Trainings-/Körperdaten-Stand zusammen und überschreibt damit die eine
 // Snapshot-Zeile in Supabase. Der GPT-Coach ruft diese Zeile über eine eigene, separate
 // Action mit einem anderen (nie im App-Code sichtbaren) Key ab.
+//
+// Bewusst Löschen + Neu-Einfügen statt Upsert: ein Upsert (ON CONFLICT DO UPDATE) verlangt von
+// Postgres zusätzlich eine Leseberechtigung, um vorab zu prüfen, ob schon eine Zeile
+// existiert - die haben wir der App absichtlich nicht gegeben (siehe supabase/coach_snapshot.sql).
 export async function uploadCoachSnapshot(): Promise<void> {
   const content = await buildSnapshotText()
-  const { error } = await supabase
+  const { error: deleteError } = await supabase.from('coach_snapshot').delete().eq('id', SNAPSHOT_ROW_ID)
+  if (deleteError) throw deleteError
+  const { error: insertError } = await supabase
     .from('coach_snapshot')
-    .upsert({ id: SNAPSHOT_ROW_ID, content, updated_at: new Date().toISOString() }, { onConflict: 'id' })
-  if (error) throw error
+    .insert({ id: SNAPSHOT_ROW_ID, content, updated_at: new Date().toISOString() })
+  if (insertError) throw insertError
 }

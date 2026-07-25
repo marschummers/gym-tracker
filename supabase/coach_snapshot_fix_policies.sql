@@ -1,17 +1,13 @@
--- Einmalig ausführen, um die Regeln aus coach_snapshot.sql zu ersetzen (behebt
--- "new row violates row-level security policy").
-drop policy if exists "anon darf snapshot anlegen" on coach_snapshot;
+-- Einmalig ausführen. Ersetzt die UPDATE-Regel durch eine DELETE-Regel: ein "Upsert"
+-- (Postgres ON CONFLICT DO UPDATE) braucht laut Postgres zusätzlich eine Leseberechtigung, um
+-- vorab zu prüfen, ob schon eine Zeile existiert - die haben wir bewusst nicht vergeben, daher
+-- schlug der Upload fehl ("new row violates row-level security policy"). Die App löscht die
+-- alte Zeile jetzt stattdessen explizit und fügt danach eine neue ein (zwei einzelne Schritte,
+-- kein Upsert) - das kommt ohne Leserecht aus.
 drop policy if exists "anon darf snapshot aktualisieren" on coach_snapshot;
 
-create policy "anon darf snapshot anlegen"
+create policy "anon darf snapshot loeschen"
 on coach_snapshot
-for insert
+for delete
 to public
-with check (id = 'latest');
-
-create policy "anon darf snapshot aktualisieren"
-on coach_snapshot
-for update
-to public
-using (id = 'latest')
-with check (id = 'latest');
+using (id = 'latest');
