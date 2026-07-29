@@ -65,7 +65,7 @@ export default function StatsPage() {
   const weeklyProgress = useLiveQuery(() => computeWeeklyProgress(), [])
   const prs = useLiveQuery(() => computeCurrentPrs(5), [])
 
-  const [weightDate, setWeightDate] = useState(() => toDateInputValue(new Date()))
+  const todayStr = toDateInputValue(new Date())
   const [weightValue, setWeightValue] = useState('')
   const [targetWeightInput, setTargetWeightInput] = useState('')
 
@@ -76,16 +76,23 @@ export default function StatsPage() {
     () => db.bodyWeightEntries.orderBy('dateStr').reverse().toArray(),
     [],
   )
+  const todayWeightEntry = bodyWeightEntries?.find((e) => e.dateStr === todayStr)
 
   useEffect(() => {
     if (appSettings?.targetWeight !== undefined) setTargetWeightInput(String(appSettings.targetWeight))
   }, [appSettings])
 
+  // Vorbefüllen mit dem heutigen Wert, falls schon einer eingetragen wurde - damit man einen
+  // Vertipper auch nach dem Schließen/Neuöffnen der App noch am selben Tag korrigieren kann.
+  // Ab dem nächsten Tag gibt es dafür keinen Treffer mehr, das Feld ist dann wieder leer.
+  useEffect(() => {
+    if (todayWeightEntry) setWeightValue(String(todayWeightEntry.weight))
+  }, [todayWeightEntry])
+
   async function saveWeightEntry() {
     const w = Number(weightValue)
-    if (!weightDate || !weightValue || !Number.isFinite(w) || w <= 0) return
-    await upsertBodyWeightEntry(weightDate, w)
-    setWeightValue('')
+    if (!weightValue || !Number.isFinite(w) || w <= 0) return
+    await upsertBodyWeightEntry(todayStr, w)
   }
 
   async function saveTargetWeight() {
@@ -481,25 +488,19 @@ export default function StatsPage() {
         <>
           <div className="form-section">
             <h2>Gewicht eintragen</h2>
-            <div className="field-row">
-              <div className="field date-field">
-                <span>Datum</span>
-                <DateSelect value={weightDate} onChange={setWeightDate} />
-              </div>
-              <label className="field">
-                <span>Gewicht (kg)</span>
-                <input
-                  type="number"
-                  step="0.1"
-                  inputMode="decimal"
-                  placeholder="83.4"
-                  value={weightValue}
-                  onChange={(e) => setWeightValue(e.target.value)}
-                />
-              </label>
-            </div>
+            <label className="field">
+              <span>Gewicht heute (kg)</span>
+              <input
+                type="number"
+                step="0.1"
+                inputMode="decimal"
+                placeholder="83.4"
+                value={weightValue}
+                onChange={(e) => setWeightValue(e.target.value)}
+              />
+            </label>
             <button className="primary-button" onClick={saveWeightEntry} disabled={!weightValue}>
-              Speichern
+              {todayWeightEntry ? 'Aktualisieren' : 'Speichern'}
             </button>
           </div>
 
