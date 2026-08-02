@@ -309,8 +309,14 @@ export default function WorkoutPage() {
                         ? { weight: String(lastHint.weight), reps: String(lastHint.reps) }
                         : { weight: '', reps: '' })
 
+                  const rowClass = existing?.skipped
+                    ? ' set-row-skipped'
+                    : existing
+                      ? ' set-row-done'
+                      : ''
+
                   return (
-                    <div key={setNumber} className={`set-row${existing?.skipped ? ' set-row-skipped' : ''}`}>
+                    <div key={setNumber} className={`set-row${rowClass}`}>
                       <span className="set-row-number">{setNumber}</span>
                       <span className="set-row-last">
                         {lastHint ? `${lastHint.weight}kg×${lastHint.reps}` : '–'}

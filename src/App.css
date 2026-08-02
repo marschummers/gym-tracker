@@ -977,6 +977,11 @@
   opacity: 0.5;
 }
 
+.set-row-done input {
+  border-color: var(--good);
+  background: rgba(124, 154, 111, 0.18);
+}
+
 .finish-button {
   background: var(--danger);
   color: #fff;
