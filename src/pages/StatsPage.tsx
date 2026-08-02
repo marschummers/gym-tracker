@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, setTargetWeight, upsertBodyWeightEntry } from '../db/db'
 import {
   formatDate,
+  formatShortDate,
   getMonday,
   getSunday,
   toDateInputValue,
@@ -68,6 +69,7 @@ export default function StatsPage() {
   const todayStr = toDateInputValue(new Date())
   const [weightValue, setWeightValue] = useState('')
   const [targetWeightInput, setTargetWeightInput] = useState('')
+  const [bodyEntriesTab, setBodyEntriesTab] = useState<'wochen' | 'tage'>('wochen')
 
   const weeklyWeightAverages = useLiveQuery(() => computeWeeklyWeightAverages(), [])
   const currentWeekWeightAvg = useLiveQuery(() => computeCurrentWeekAverage(), [])
@@ -545,17 +547,50 @@ export default function StatsPage() {
 
           {bodyWeightEntries && bodyWeightEntries.length > 0 && (
             <div className="progress-card">
-              <p className="progress-card-title">Einträge</p>
-              <div className="pr-list">
-                {bodyWeightEntries.map((entry) => (
-                  <div key={entry.id} className="pr-row">
-                    <span className="pr-name">
-                      {formatDate(new Date(`${entry.dateStr}T00:00:00`).getTime())}
-                    </span>
-                    <span className="pr-value">{entry.weight} kg</span>
-                  </div>
-                ))}
+              <div className="sub-tabs body-entries-tabs">
+                <button
+                  className={bodyEntriesTab === 'wochen' ? 'active' : ''}
+                  onClick={() => setBodyEntriesTab('wochen')}
+                >
+                  Wochen
+                </button>
+                <button
+                  className={bodyEntriesTab === 'tage' ? 'active' : ''}
+                  onClick={() => setBodyEntriesTab('tage')}
+                >
+                  Tage
+                </button>
               </div>
+
+              {bodyEntriesTab === 'wochen' ? (
+                <div className="pr-list">
+                  {[...(weeklyWeightAverages ?? [])].reverse().map((w) => {
+                    const weekEnd = w.x + 6 * 24 * 60 * 60 * 1000
+                    return (
+                      <div key={w.x} className="pr-row">
+                        <span className="pr-name">
+                          {formatShortDate(w.x)} – {formatShortDate(weekEnd)}
+                        </span>
+                        <span className="pr-value">{w.y.toFixed(2)} kg</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="pr-list">
+                  {bodyWeightEntries.slice(0, 10).map((entry) => (
+                    <div key={entry.id} className="pr-row">
+                      <span className="pr-name">
+                        {formatDate(new Date(`${entry.dateStr}T00:00:00`).getTime())}
+                      </span>
+                      <span className="pr-value">{entry.weight} kg</span>
+                    </div>
+                  ))}
+                  {bodyWeightEntries.length > 10 && (
+                    <p className="hint">Ältere Tage bleiben gespeichert, werden hier nur nicht mehr angezeigt.</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </>

@@ -30,38 +30,35 @@ export default function LineChart({
   }
 
   const width = 300
-  const padX = 8
-  const padTop = 20
-  const padBottom = 22
+  const padLeft = 28
+  const padRight = 8
+  const padTop = 14
+  const padBottom = 20
 
   const xs = points.map((p) => p.x)
   const ys = points.map((p) => p.y)
   const minX = Math.min(...xs)
   const maxX = Math.max(...xs)
-  const minY = Math.min(...ys)
-  const maxY = Math.max(...ys)
-  const yRange = maxY - minY || 1
-  const yPadded = { min: minY - yRange * 0.15, max: maxY + yRange * 0.15 }
+
+  // Y-Achse: kleinstem/größtem Wert jeweils 1 Einheit Puffer geben, auf ganze Zahlen gerundet
+  // (z.B. Werte zwischen 81 und 84 -> Achse von 80 bis 85), statt eines einzelnen "Spitzenwert"-
+  // Textes über dem Chart, der bei fallendem Verlauf irreführend immer den ältesten Wert zeigte.
+  const yAxisMin = Math.floor(Math.min(...ys)) - 1
+  const yAxisMax = Math.ceil(Math.max(...ys)) + 1
+  const yAxisMid = (yAxisMin + yAxisMax) / 2
 
   function toSvgX(x: number) {
-    if (maxX === minX) return width / 2
-    return padX + ((x - minX) / (maxX - minX)) * (width - padX * 2)
+    if (maxX === minX) return (padLeft + (width - padRight)) / 2
+    return padLeft + ((x - minX) / (maxX - minX)) * (width - padLeft - padRight)
   }
   function toSvgY(y: number) {
-    const range = yPadded.max - yPadded.min || 1
-    return padTop + (1 - (y - yPadded.min) / range) * (height - padTop - padBottom)
+    const range = yAxisMax - yAxisMin || 1
+    return padTop + (1 - (y - yAxisMin) / range) * (height - padTop - padBottom)
   }
 
   const coords = points.map((p) => ({ sx: toSvgX(p.x), sy: toSvgY(p.y) }))
   const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'}${c.sx.toFixed(1)},${c.sy.toFixed(1)}`).join(' ')
   const areaPath = `${linePath} L${coords[coords.length - 1].sx.toFixed(1)},${height - padBottom} L${coords[0].sx.toFixed(1)},${height - padBottom} Z`
-
-  let peakIndex = 0
-  points.forEach((p, i) => {
-    if (p.y > points[peakIndex].y) peakIndex = i
-  })
-  const peak = points[peakIndex]
-  const peakCoord = coords[peakIndex]
 
   const active = hoverIndex !== null ? hoverIndex : null
 
@@ -80,17 +77,10 @@ export default function LineChart({
     setHoverIndex(nearest)
   }
 
-  const gridY = toSvgY(yPadded.min + (yPadded.max - yPadded.min) / 2)
+  const gridY = toSvgY(yAxisMid)
 
   return (
     <div className="line-chart">
-      <div className="line-chart-peak">
-        <span className="line-chart-peak-value">
-          {formatValue(peak.y)}
-          {unit}
-        </span>
-        <span className="line-chart-peak-date">{formatShortDate(peak.x)}</span>
-      </div>
       <svg
         viewBox={`0 0 ${width} ${height}`}
         width="100%"
@@ -98,12 +88,11 @@ export default function LineChart({
         onPointerMove={handlePointer}
         onPointerLeave={() => setHoverIndex(null)}
         role="img"
-        aria-label={`Verlauf von ${peak.y}${unit}`}
+        aria-label={`Verlauf von ${yAxisMin} bis ${yAxisMax}${unit}`}
       >
-        <line x1={padX} y1={gridY} x2={width - padX} y2={gridY} stroke="var(--border)" strokeWidth="1" />
+        <line x1={padLeft} y1={gridY} x2={width - padRight} y2={gridY} stroke="var(--border)" strokeWidth="1" />
         <path d={areaPath} fill={color} opacity="0.12" stroke="none" />
         <path d={linePath} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx={peakCoord.sx} cy={peakCoord.sy} r="4" fill={color} />
         {active !== null && (
           <>
             <line
@@ -118,10 +107,22 @@ export default function LineChart({
             <circle cx={coords[active].sx} cy={coords[active].sy} r="4" fill="var(--bg)" stroke={color} strokeWidth="2" />
           </>
         )}
-        <text x={padX} y={height - 4} fontSize="9" fill="var(--text-dim)">
+        <text x={padLeft - 4} y={padTop + 3} fontSize="9" fill="var(--text-dim)" textAnchor="end">
+          {yAxisMax}
+          {unit}
+        </text>
+        <text x={padLeft - 4} y={gridY + 3} fontSize="9" fill="var(--text-dim)" textAnchor="end">
+          {yAxisMid}
+          {unit}
+        </text>
+        <text x={padLeft - 4} y={height - padBottom + 3} fontSize="9" fill="var(--text-dim)" textAnchor="end">
+          {yAxisMin}
+          {unit}
+        </text>
+        <text x={padLeft} y={height - 4} fontSize="9" fill="var(--text-dim)">
           {formatShortDate(minX)}
         </text>
-        <text x={width - padX} y={height - 4} fontSize="9" fill="var(--text-dim)" textAnchor="end">
+        <text x={width - padRight} y={height - 4} fontSize="9" fill="var(--text-dim)" textAnchor="end">
           {formatShortDate(maxX)}
         </text>
       </svg>
