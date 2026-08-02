@@ -140,6 +140,28 @@ export async function cleanupEmptySessions(minAgeMs = AUTO_STALE_SESSION_AGE_MS)
   return staleIds.length;
 }
 
+// Löscht offene Trainingseinheiten samt ihrer Sätze, wenn sie so alt sind, dass sie mit hoher
+// Sicherheit vergessen/verlassen statt fortgesetzt wurden (App einfach geschlossen statt
+// "Abbrechen" zu drücken). Ohne das würden diese Sätze fälschlich als "Letztes Mal" und in
+// Statistiken/PRs mitzählen, obwohl das Training nie wirklich beendet wurde. Deutlich
+// großzügigerer Zeitraum als bei leeren Einheiten, damit ein echtes, noch laufendes langes
+// Training nie betroffen ist.
+const ABANDONED_SESSION_AGE_MS = 4 * 60 * 60 * 1000;
+
+export async function cleanupAbandonedSessions(minAgeMs = ABANDONED_SESSION_AGE_MS): Promise<number> {
+  const staleSessions = await db.workoutSessions
+    .filter((s) => s.endedAt === null && Date.now() - s.startedAt >= minAgeMs)
+    .toArray();
+  if (staleSessions.length === 0) return 0;
+
+  const staleIds = staleSessions.map((s) => s.id);
+  await db.transaction('rw', db.workoutSessions, db.setEntries, async () => {
+    await db.setEntries.where('sessionId').anyOf(staleIds).delete();
+    await db.workoutSessions.bulkDelete(staleIds);
+  });
+  return staleIds.length;
+}
+
 // Verknüpft zwei Übungen als gegenseitige Alternativen (z.B. gleiche Übung an anderer Maschine).
 export async function addAlternativeExercise(exerciseDefId: string, alternativeId: string) {
   if (exerciseDefId === alternativeId) return;

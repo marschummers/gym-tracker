@@ -5,6 +5,12 @@ import { db, newId } from '../db/db'
 import { playRestEndBeep, unlockAudio } from '../lib/sound'
 import GroupedExerciseOptions from '../components/GroupedExerciseOptions'
 
+// Entfernt führende Nullen ("0008" -> "8"), lässt "0" selbst und Dezimalwerte wie "0.5" aber
+// unangetastet.
+function sanitizeNumberInput(value: string): string {
+  return value.replace(/^0+(?=\d)/, '')
+}
+
 function formatDuration(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000))
   const h = Math.floor(totalSeconds / 3600)
@@ -326,14 +332,14 @@ export default function WorkoutPage() {
                         inputMode="decimal"
                         placeholder="kg"
                         value={input.weight}
-                        onChange={(e) => updateInput(key, input, 'weight', e.target.value)}
+                        onChange={(e) => updateInput(key, input, 'weight', sanitizeNumberInput(e.target.value))}
                       />
                       <input
                         type="number"
                         inputMode="numeric"
                         placeholder="Wdh."
                         value={input.reps}
-                        onChange={(e) => updateInput(key, input, 'reps', e.target.value)}
+                        onChange={(e) => updateInput(key, input, 'reps', sanitizeNumberInput(e.target.value))}
                       />
                       <button
                         onClick={() => logSet(de.id, activeId, setNumber, de.restSeconds, input.weight, input.reps)}

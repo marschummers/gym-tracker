@@ -11,13 +11,19 @@ import SettingsPage from './pages/SettingsPage'
 import NavIcon from './components/NavIcon'
 import UpdateBanner from './components/UpdateBanner'
 import { PwaUpdateProvider } from './lib/pwaUpdate'
-import { cleanupEmptySessions, dedupeExerciseDefs, seedExerciseLibraryIfNeeded } from './db/db'
+import {
+  cleanupAbandonedSessions,
+  cleanupEmptySessions,
+  dedupeExerciseDefs,
+  seedExerciseLibraryIfNeeded,
+} from './db/db'
 import './App.css'
 
 function App() {
   useEffect(() => {
     dedupeExerciseDefs().then(() => seedExerciseLibraryIfNeeded())
     cleanupEmptySessions()
+    cleanupAbandonedSessions()
   }, [])
 
   return (
