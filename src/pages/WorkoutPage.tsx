@@ -130,32 +130,48 @@ export default function WorkoutPage() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [])
 
-  function getInput(deId: string, setNumber: number) {
-    if (inputs[deId]) return inputs[deId]
-    const last = lastSets?.[deId]?.find((s) => s.setNumber === setNumber)
-    if (last) return { weight: String(last.weight), reps: String(last.reps) }
-    return { weight: '', reps: '' }
+  function updateInput(
+    key: string,
+    current: { weight: string; reps: string },
+    field: 'weight' | 'reps',
+    value: string,
+  ) {
+    setInputs((prev) => ({ ...prev, [key]: { ...current, [field]: value } }))
   }
 
-  function updateInput(deId: string, setNumber: number, field: 'weight' | 'reps', value: string) {
-    setInputs((prev) => ({ ...prev, [deId]: { ...getInput(deId, setNumber), [field]: value } }))
-  }
-
-  async function logSet(deId: string, exerciseDefId: string, setNumber: number, restSeconds: number) {
+  // Loggt bzw. korrigiert einen Satz. Ein Satz gilt als "neu" (löst eine Pause aus), wenn noch
+  // kein Eintrag existiert oder er bisher übersprungen war - reines Korrigieren eines bereits
+  // echt geloggten Satzes startet dagegen keine neue Pause.
+  async function logSet(
+    deId: string,
+    exerciseDefId: string,
+    setNumber: number,
+    restSeconds: number,
+    weightStr: string,
+    repsStr: string,
+  ) {
     if (!sessionId) return
     unlockAudio()
-    const { weight, reps } = getInput(deId, setNumber)
-    await db.setEntries.add({
-      id: newId(),
-      sessionId,
-      dayExerciseId: deId,
-      exerciseDefId,
-      setNumber,
-      weight: Number(weight) || 0,
-      reps: Number(reps) || 0,
-      completedAt: Date.now(),
-    })
-    if (restSeconds > 0) {
+    const weight = Number(weightStr) || 0
+    const reps = Number(repsStr) || 0
+    const existing = (setEntries ?? []).find((s) => s.dayExerciseId === deId && s.setNumber === setNumber)
+
+    if (existing) {
+      await db.setEntries.update(existing.id, { weight, reps, skipped: false, exerciseDefId })
+    } else {
+      await db.setEntries.add({
+        id: newId(),
+        sessionId,
+        dayExerciseId: deId,
+        exerciseDefId,
+        setNumber,
+        weight,
+        reps,
+        completedAt: Date.now(),
+      })
+    }
+
+    if ((!existing || existing.skipped) && restSeconds > 0) {
       restEndRef.current = Date.now() + restSeconds * 1000
       setRestRemaining(restSeconds * 1000)
       setRestTotal(restSeconds * 1000)
@@ -168,17 +184,23 @@ export default function WorkoutPage() {
     if (!sessionId) return
     if (!confirm('Satz wirklich überspringen?')) return
     unlockAudio()
-    await db.setEntries.add({
-      id: newId(),
-      sessionId,
-      dayExerciseId: deId,
-      exerciseDefId,
-      setNumber,
-      weight: 0,
-      reps: 0,
-      completedAt: Date.now(),
-      skipped: true,
-    })
+    const existing = (setEntries ?? []).find((s) => s.dayExerciseId === deId && s.setNumber === setNumber)
+
+    if (existing) {
+      await db.setEntries.update(existing.id, { skipped: true, weight: 0, reps: 0, exerciseDefId })
+    } else {
+      await db.setEntries.add({
+        id: newId(),
+        sessionId,
+        dayExerciseId: deId,
+        exerciseDefId,
+        setNumber,
+        weight: 0,
+        reps: 0,
+        completedAt: Date.now(),
+        skipped: true,
+      })
+    }
   }
 
   async function finishWorkout() {
@@ -248,10 +270,8 @@ export default function WorkoutPage() {
           const activeId = activeExerciseId[de.id] ?? de.exerciseDefId
 
           const loggedSets = (setEntries ?? []).filter((s) => s.dayExerciseId === de.id)
-          const nextSetNumber = loggedSets.length + 1
-          const done = nextSetNumber > de.targetSets
-          const input = getInput(de.id, nextSetNumber)
-          const lastForNextSet = lastSets?.[de.id]?.find((s) => s.setNumber === nextSetNumber)
+          const setNumbers = Array.from({ length: de.targetSets }, (_, i) => i + 1)
+          const allDone = setNumbers.every((n) => loggedSets.some((s) => s.setNumber === n))
 
           return (
             <div key={de.id} className="workout-exercise">
@@ -276,57 +296,57 @@ export default function WorkoutPage() {
                 </label>
               )}
 
-              {loggedSets.length > 0 && (
-                <ul className="set-log">
-                  {loggedSets
-                    .sort((a, b) => a.setNumber - b.setNumber)
-                    .map((s) => (
-                      <li key={s.id}>
-                        {s.skipped ? (
-                          <>Satz {s.setNumber}: Übersprungen</>
-                        ) : (
-                          <>Satz {s.setNumber}: {s.weight} kg × {s.reps} Wdh.</>
-                        )}
-                      </li>
-                    ))}
-                </ul>
-              )}
+              <div className="set-rows">
+                {setNumbers.map((setNumber) => {
+                  const existing = loggedSets.find((s) => s.setNumber === setNumber)
+                  const lastHint = lastSets?.[de.id]?.find((s) => s.setNumber === setNumber)
+                  const key = `${de.id}:${setNumber}`
+                  const input =
+                    inputs[key] ??
+                    (existing && !existing.skipped
+                      ? { weight: String(existing.weight), reps: String(existing.reps) }
+                      : lastHint
+                        ? { weight: String(lastHint.weight), reps: String(lastHint.reps) }
+                        : { weight: '', reps: '' })
 
-              {!done ? (
-                <>
-                  {lastForNextSet && (
-                    <p className="last-time-hint">
-                      Letztes Mal: {lastForNextSet.weight} kg × {lastForNextSet.reps} Wdh.
-                    </p>
-                  )}
-                  <div className="set-input-row">
-                    <span className="set-number">Satz {nextSetNumber}/{de.targetSets}</span>
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      placeholder="kg"
-                      value={input.weight}
-                      onChange={(e) => updateInput(de.id, nextSetNumber, 'weight', e.target.value)}
-                    />
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      placeholder="Wdh."
-                      value={input.reps}
-                      onChange={(e) => updateInput(de.id, nextSetNumber, 'reps', e.target.value)}
-                    />
-                    <button onClick={() => logSet(de.id, activeId, nextSetNumber, de.restSeconds)}>✓</button>
-                    <button
-                      className="skip-button"
-                      onClick={() => skipSet(de.id, activeId, nextSetNumber)}
-                    >
-                      Skip
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <p className="hint">Alle Sätze erledigt ✓</p>
-              )}
+                  return (
+                    <div key={setNumber} className={`set-row${existing?.skipped ? ' set-row-skipped' : ''}`}>
+                      <span className="set-row-number">{setNumber}</span>
+                      <span className="set-row-last">
+                        {lastHint ? `${lastHint.weight}kg×${lastHint.reps}` : '–'}
+                      </span>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        placeholder="kg"
+                        value={input.weight}
+                        onChange={(e) => updateInput(key, input, 'weight', e.target.value)}
+                      />
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="Wdh."
+                        value={input.reps}
+                        onChange={(e) => updateInput(key, input, 'reps', e.target.value)}
+                      />
+                      <button
+                        onClick={() => logSet(de.id, activeId, setNumber, de.restSeconds, input.weight, input.reps)}
+                      >
+                        ✓
+                      </button>
+                      <button
+                        className="skip-button"
+                        disabled={existing?.skipped}
+                        onClick={() => skipSet(de.id, activeId, setNumber)}
+                      >
+                        {existing?.skipped ? 'Übersprungen' : 'Skip'}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {allDone && <p className="hint">Alle Sätze erledigt ✓</p>}
             </div>
           )
         })}

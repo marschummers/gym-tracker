@@ -909,59 +909,72 @@
   padding: 0.35rem 0.5rem;
 }
 
-.set-log {
-  list-style: none;
-  margin: 0 0 0.6rem;
-  padding: 0;
-  color: var(--text-dim);
-  font-size: 0.9rem;
+.set-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
 }
 
-.last-time-hint {
-  color: var(--text-dim);
-  font-size: 0.85rem;
-  margin: 0 0 0.4rem;
-}
-
-.set-input-row {
+.set-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 
-.set-number {
+.set-row-number {
   font-size: 0.85rem;
   color: var(--text-dim);
-  white-space: nowrap;
+  width: 1rem;
+  flex-shrink: 0;
 }
 
-.set-input-row input {
+.set-row-last {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 3.4rem;
+}
+
+.set-row input {
   width: 0;
   flex: 1;
   min-width: 0;
   font-family: var(--font-mono);
+  padding: 0.45rem 0.4rem;
 }
 
-.set-input-row button {
+.set-row button {
   background: var(--accent);
   color: var(--accent-text);
   border: none;
   border-radius: 50%;
-  width: 2.6rem;
-  height: 2.6rem;
-  font-size: 1.1rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  font-size: 1rem;
+  padding: 0;
   flex-shrink: 0;
 }
 
-.set-input-row .skip-button {
+.set-row .skip-button {
   background: transparent;
   color: var(--text-dim);
   border: 1px solid var(--border);
   border-radius: 8px;
   width: auto;
-  height: 2.6rem;
-  padding: 0 0.6rem;
-  font-size: 0.8rem;
+  height: 2.2rem;
+  padding: 0 0.45rem;
+  font-size: 0.68rem;
+  flex-shrink: 0;
+}
+
+.set-row .skip-button:disabled {
+  opacity: 0.55;
+}
+
+.set-row-skipped input {
+  opacity: 0.5;
 }
 
 .finish-button {
