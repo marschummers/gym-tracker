@@ -1,10 +1,25 @@
-// Beide Sounds laufen bewusst über echte <audio>-Elemente statt über die Web Audio API
+// Der Piepton läuft bewusst über ein echtes <audio>-Element statt über die Web Audio API
 // (AudioContext + Oszillatoren): AudioContext.resume() funktioniert auf iOS nur zuverlässig,
 // wenn es direkt innerhalb eines Taps aufgerufen wird. Der Pausen-Piepton muss aber
 // zeitgesteuert (aus dem Sekundentakt heraus) abgespielt werden, also NICHT innerhalb eines
-// Taps - genau dann schlug resume() auf iOS lautlos fehl und es kam kein Ton, auch wenn die
-// App die ganze Zeit im Vordergrund war. <audio>-Elemente lassen sich dagegen einmalig (per
-// Tap) "entsperren" und danach beliebig oft zeitgesteuert abspielen.
+// Taps - genau dann schlug resume() auf iOS lautlos fehl. Ein <audio>-Element lässt sich
+// dagegen einmalig (per Tap) "entsperren" und danach beliebig oft zeitgesteuert abspielen -
+// dieses einmalige Entsperren (unlockAudio, siehe unten) übernimmt bei iOS genau die Rolle,
+// die vorher zusätzlich ein dauerhafter Silent-Loop hatte, aber ohne durchgehende
+// Audiowiedergabe (die Spotify/andere Apps sonst die ganze Pause über unterbricht).
+
+// navigator.audioSession ist eine WebKit-/Safari-spezifische, experimentelle API (seit
+// iOS/Safari 16.4, noch nicht in der TypeScript-DOM-Lib enthalten) - hier minimal
+// nachdeklariert. Laut WebKit wird bisher nur eine Teilmenge der vollen Spec unterstützt,
+// daher wird sie hier als reines Progressive Enhancement behandelt (Feature-Check + try/catch,
+// kein Verlass darauf, dass sie etwas bewirkt).
+type AudioSessionType = 'auto' | 'playback' | 'transient' | 'transient-solo' | 'ambient' | 'play-and-record'
+
+declare global {
+  interface Navigator {
+    audioSession?: { type: AudioSessionType }
+  }
+}
 
 function writeWavHeader(
   view: DataView,
@@ -29,21 +44,6 @@ function writeWavHeader(
   view.setUint16(34, bitsPerSample, true)
   writeString(36, 'data')
   view.setUint32(40, dataSize, true)
-}
-
-// 8 Sekunden echte Stille zum Endlos-Loopen. Ein aktiv abspielendes <audio>-Element hält die
-// Seite im Hintergrund (App-Wechsel, gesperrter Bildschirm) am Laufen - ohne das pausiert iOS
-// die komplette JavaScript-Ausführung inkl. des Sekundentakts. Wichtig: konstante Werte (echte
-// Stille), keine wechselnden Sample-Werte - eine frühere Version mit abwechselnden Werten
-// ergab technisch eine hochfrequente, hörbare Wellenform statt Stille.
-function createKeepAliveAudioUrl(): string {
-  const sampleRate = 8000
-  const numSamples = sampleRate * 8
-  const buffer = new ArrayBuffer(44 + numSamples)
-  const view = new DataView(buffer)
-  writeWavHeader(view, numSamples, sampleRate, 8)
-  for (let i = 0; i < numSamples; i++) view.setUint8(44 + i, 128)
-  return URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }))
 }
 
 // Doppelter kurzer Piepton (880 Hz, zwei Bursts mit Attack/Decay-Hüllkurve).
@@ -83,19 +83,8 @@ function createBeepAudioUrl(): string {
   return URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }))
 }
 
-let bgAudio: HTMLAudioElement | null = null
 let beepAudio: HTMLAudioElement | null = null
 let beepUnlocked = false
-
-function getBgAudio(): HTMLAudioElement {
-  if (!bgAudio) {
-    bgAudio = new Audio(createKeepAliveAudioUrl())
-    bgAudio.loop = true
-    bgAudio.volume = 0.02
-    bgAudio.preload = 'auto'
-  }
-  return bgAudio
-}
 
 function getBeepAudio(): HTMLAudioElement {
   if (!beepAudio) {
@@ -105,31 +94,56 @@ function getBeepAudio(): HTMLAudioElement {
   return beepAudio
 }
 
-// Muss aus einem echten Nutzer-Tap heraus (Klick auf ✓/Skip usw.) UND regelmäßig im
-// Sekundentakt aufgerufen werden: der Tap entsperrt beide Audio-Elemente zuverlässig und
-// startet den Hintergrund-Loop, der Sekundentakt versucht den Loop erneut zu starten, falls
-// iOS ihn zwischendurch doch mal pausiert hat.
+// Entsperrt das Audio-Element einmalig (stumm anspielen, sofort pausieren) für spätere
+// zeitgesteuerte Wiedergabe außerhalb eines Taps. Muss aus einem echten Nutzer-Tap heraus
+// aufgerufen werden (Klick auf ✓/Skip usw.) - genau das passiert bereits synchron, BEVOR
+// logSet() den Pausen-Timer startet, das Entsperren ist also immer abgeschlossen, bevor ein
+// Piepton überhaupt fällig werden kann. Einmal entsperrt bleibt das für die gesamte
+// Seiten-Lebensdauer so (kein erneutes Entsperren nötig) - wiederholte Aufrufe danach sind
+// ein günstiger No-op, hier als zusätzliches Sicherheitsnetz belassen.
 export function unlockAudio() {
-  const audio = getBgAudio()
-  if (audio.paused) audio.play().catch(() => {})
-
-  if (!beepUnlocked) {
-    const beep = getBeepAudio()
-    beep.muted = true
-    beep
-      .play()
-      .then(() => {
-        beep.pause()
-        beep.currentTime = 0
-        beep.muted = false
-        beepUnlocked = true
-      })
-      .catch(() => {})
-  }
+  if (beepUnlocked) return
+  const beep = getBeepAudio()
+  beep.muted = true
+  beep
+    .play()
+    .then(() => {
+      beep.pause()
+      beep.currentTime = 0
+      beep.muted = false
+      beepUnlocked = true
+    })
+    .catch(() => {})
 }
 
 export function playRestEndBeep() {
+  const audioSession = navigator.audioSession
+
+  // Markiert die Wiedergabe als kurze, unwichtige Unterbrechung: andere Audioquellen wie
+  // Spotify werden dadurch beim Piepton nur kurz geduckt statt komplett pausiert/beendet.
+  // Reines Progressive Enhancement (siehe Typ-Kommentar oben) - danach wieder auf 'auto'
+  // zurücksetzen, damit die Kategorisierung nicht über den Piepton hinaus bestehen bleibt.
+  try {
+    if (audioSession) audioSession.type = 'transient'
+  } catch {
+    // ignorieren, Piepton soll trotzdem abgespielt werden
+  }
+
+  function resetAudioSessionType() {
+    try {
+      if (audioSession) audioSession.type = 'auto'
+    } catch {
+      // ignorieren
+    }
+  }
+
   const beep = getBeepAudio()
   beep.currentTime = 0
-  beep.play().catch(() => {})
+  beep.addEventListener('ended', resetAudioSessionType, { once: true })
+  beep.play().catch((err) => {
+    // Kein UI-Fehler, aber sichtbar im (Remote-)Debugger, falls der Piepton z.B. wegen der
+    // iOS-Autoplay-Regeln doch mal blockiert wird.
+    console.warn('Pausen-Piepton konnte nicht abgespielt werden:', err)
+    resetAudioSessionType()
+  })
 }

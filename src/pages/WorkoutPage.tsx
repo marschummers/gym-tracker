@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { db, newId } from '../db/db'
 import { playRestEndBeep, unlockAudio } from '../lib/sound'
+import { hasActiveWakeLock, releaseWakeLock, requestWakeLock } from '../lib/wakeLock'
 import GroupedExerciseOptions from '../components/GroupedExerciseOptions'
 
 // Entfernt führende Nullen ("0008" -> "8"), lässt "0" selbst und Dezimalwerte wie "0.5" aber
@@ -107,9 +108,7 @@ export default function WorkoutPage() {
   useEffect(() => {
     const interval = setInterval(() => {
       setNow(Date.now())
-      // iOS schläfert den Audio-Kontext zwischendurch wieder ein (z.B. bei gesperrtem
-      // Bildschirm) - hier laufend versuchen, ihn wach zu halten, damit der Piepton beim
-      // Pausenende auch beim zweiten, dritten... Mal noch abspielt.
+      // No-op sobald einmal entsperrt (siehe lib/sound.ts) - hier nur als Sicherheitsnetz.
       unlockAudio()
       if (restEndRef.current !== null) {
         const remaining = restEndRef.current - Date.now()
@@ -126,15 +125,28 @@ export default function WorkoutPage() {
     return () => clearInterval(interval)
   }, [])
 
-  // Zusätzlich direkt beim Zurückkehren aus dem Hintergrund (Bildschirm entsperrt,
-  // App-Wechsel) versuchen, den Audio-Kontext wach zu machen.
+  // Bildschirm während eines aktiven Workouts wach halten, damit der Sekundentakt zuverlässig
+  // weiterläuft, solange die App offen und sichtbar ist (siehe lib/wakeLock.ts).
+  useEffect(() => {
+    if (!sessionId) return
+    requestWakeLock()
+    return () => {
+      releaseWakeLock()
+    }
+  }, [sessionId])
+
+  // Beim Zurückkehren aus dem Hintergrund (Bildschirm entsperrt, App-Wechsel): Audio-Unlock
+  // erneut versuchen (No-op falls schon entsperrt) und den Wake Lock erneut anfordern, falls
+  // das System ihn zwischendurch freigegeben hat.
   useEffect(() => {
     function handleVisibilityChange() {
-      if (document.visibilityState === 'visible') unlockAudio()
+      if (document.visibilityState !== 'visible') return
+      unlockAudio()
+      if (sessionId && !hasActiveWakeLock()) requestWakeLock()
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [])
+  }, [sessionId])
 
   function updateInput(
     key: string,
@@ -213,6 +225,7 @@ export default function WorkoutPage() {
     if (!sessionId) return
     if (!confirm('Training beenden?')) return
     await db.workoutSessions.update(sessionId, { endedAt: Date.now() })
+    await releaseWakeLock()
     navigate(`/plans/${planId}/days/${dayId}`)
   }
 
@@ -239,6 +252,7 @@ export default function WorkoutPage() {
     if (!confirm('Training abbrechen? Alle bisher eingetragenen Sätze dieser Einheit werden verworfen.')) return
     await db.setEntries.where('sessionId').equals(sessionId).delete()
     await db.workoutSessions.delete(sessionId)
+    await releaseWakeLock()
     navigate(`/plans/${planId}/days/${dayId}`)
   }
 
