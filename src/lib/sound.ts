@@ -10,14 +10,35 @@
 
 // navigator.audioSession ist eine WebKit-/Safari-spezifische, experimentelle API (seit
 // iOS/Safari 16.4, noch nicht in der TypeScript-DOM-Lib enthalten) - hier minimal
-// nachdeklariert. Laut WebKit wird bisher nur eine Teilmenge der vollen Spec unterstützt,
-// daher wird sie hier als reines Progressive Enhancement behandelt (Feature-Check + try/catch,
-// kein Verlass darauf, dass sie etwas bewirkt).
+// nachdeklariert. Nur Safari implementiert sie bisher (Editor's-Draft-Status), daher reines
+// Progressive Enhancement (Feature-Check + try/catch, kein Verlass darauf, dass sie etwas
+// bewirkt).
+//
+// 'transient' (laut Spec: andere Audio nur kurz ducken, nicht pausieren) hat sich auf einem
+// echten iPhone NICHT wie in der Spec beschrieben verhalten: Spotify wurde komplett gestoppt
+// und lief danach nicht mehr weiter, zusätzlich blieb der eigene Piepton stumm. Deshalb jetzt
+// 'ambient' (laut Spec: nur Mischen, nie Pausieren/Ducken) - die vorsichtigere Kategorie, die
+// am wenigsten Angriffsfläche für dieses Fehlverhalten bietet. Nachteil: Spotify wird beim
+// Piepton nicht automatisch leiser, das ist hier explizit in Ordnung.
 type AudioSessionType = 'auto' | 'playback' | 'transient' | 'transient-solo' | 'ambient' | 'play-and-record'
 
 declare global {
   interface Navigator {
     audioSession?: { type: AudioSessionType }
+  }
+}
+
+function setAudioSessionType(type: AudioSessionType, context: string) {
+  const audioSession = navigator.audioSession
+  if (!audioSession) {
+    console.log(`[sound] audioSession nicht verfügbar (${context})`)
+    return
+  }
+  try {
+    audioSession.type = type
+    console.log(`[sound] audioSession.type = '${type}' gesetzt (${context})`)
+  } catch (err) {
+    console.warn(`[sound] audioSession.type = '${type}' fehlgeschlagen (${context}):`, err)
   }
 }
 
@@ -46,7 +67,10 @@ function writeWavHeader(
   view.setUint32(40, dataSize, true)
 }
 
-// Doppelter kurzer Piepton (880 Hz, zwei Bursts mit Attack/Decay-Hüllkurve).
+// Doppelter kurzer Piepton (880 Hz, zwei Bursts mit Attack/Decay-Hüllkurve). Amplitude direkt
+// hier hochgesetzt statt über die .volume-Eigenschaft des <audio>-Elements - die wird von iOS
+// Safari ignoriert (nur .muted funktioniert dort zuverlässig, Lautstärke ist an die
+// Hardware-Tasten gebunden).
 function createBeepAudioUrl(): string {
   const sampleRate = 22050
   const totalDuration = 0.42
@@ -56,6 +80,7 @@ function createBeepAudioUrl(): string {
   const burstDuration = 0.19
   const attack = 0.01
   const decay = 0.17
+  const gain = 0.6
 
   function envelope(t: number): number {
     if (t < attack) return t / attack
@@ -69,7 +94,7 @@ function createBeepAudioUrl(): string {
     for (const start of burstStarts) {
       const rel = t - start
       if (rel >= 0 && rel < burstDuration) {
-        sample += Math.sin(2 * Math.PI * 880 * rel) * envelope(rel) * 0.35
+        sample += Math.sin(2 * Math.PI * 880 * rel) * envelope(rel) * gain
       }
     }
     samples[i] = Math.max(-1, Math.min(1, sample)) * 32767
@@ -98,11 +123,14 @@ function getBeepAudio(): HTMLAudioElement {
 // zeitgesteuerte Wiedergabe außerhalb eines Taps. Muss aus einem echten Nutzer-Tap heraus
 // aufgerufen werden (Klick auf ✓/Skip usw.) - genau das passiert bereits synchron, BEVOR
 // logSet() den Pausen-Timer startet, das Entsperren ist also immer abgeschlossen, bevor ein
-// Piepton überhaupt fällig werden kann. Einmal entsperrt bleibt das für die gesamte
-// Seiten-Lebensdauer so (kein erneutes Entsperren nötig) - wiederholte Aufrufe danach sind
-// ein günstiger No-op, hier als zusätzliches Sicherheitsnetz belassen.
+// Piepton überhaupt fällig werden kann. Die Audio-Session wird schon hier (noch innerhalb des
+// Taps) auf 'ambient' gesetzt, nicht erst kurz vor dem eigentlichen Piepton: falls
+// audioSession.type ähnlich wie AudioContext.resume() nur innerhalb einer echten
+// Nutzerinteraktion zuverlässig greift, hat er hier die beste Chance dazu.
 export function unlockAudio() {
   if (beepUnlocked) return
+  setAudioSessionType('ambient', 'unlockAudio')
+
   const beep = getBeepAudio()
   beep.muted = true
   beep
@@ -112,38 +140,30 @@ export function unlockAudio() {
       beep.currentTime = 0
       beep.muted = false
       beepUnlocked = true
+      console.log('[sound] Audio-Element erfolgreich entsperrt')
     })
-    .catch(() => {})
+    .catch((err) => {
+      console.warn('[sound] Entsperren des Audio-Elements fehlgeschlagen:', err)
+    })
 }
 
 export function playRestEndBeep() {
-  const audioSession = navigator.audioSession
-
-  // Markiert die Wiedergabe als kurze, unwichtige Unterbrechung: andere Audioquellen wie
-  // Spotify werden dadurch beim Piepton nur kurz geduckt statt komplett pausiert/beendet.
-  // Reines Progressive Enhancement (siehe Typ-Kommentar oben) - danach wieder auf 'auto'
-  // zurücksetzen, damit die Kategorisierung nicht über den Piepton hinaus bestehen bleibt.
-  try {
-    if (audioSession) audioSession.type = 'transient'
-  } catch {
-    // ignorieren, Piepton soll trotzdem abgespielt werden
-  }
+  setAudioSessionType('ambient', 'playRestEndBeep')
 
   function resetAudioSessionType() {
-    try {
-      if (audioSession) audioSession.type = 'auto'
-    } catch {
-      // ignorieren
-    }
+    setAudioSessionType('auto', 'playRestEndBeep: reset')
   }
 
   const beep = getBeepAudio()
   beep.currentTime = 0
   beep.addEventListener('ended', resetAudioSessionType, { once: true })
-  beep.play().catch((err) => {
-    // Kein UI-Fehler, aber sichtbar im (Remote-)Debugger, falls der Piepton z.B. wegen der
-    // iOS-Autoplay-Regeln doch mal blockiert wird.
-    console.warn('Pausen-Piepton konnte nicht abgespielt werden:', err)
-    resetAudioSessionType()
-  })
+  beep
+    .play()
+    .then(() => console.log('[sound] Piepton gestartet'))
+    .catch((err) => {
+      // Kein UI-Fehler, aber sichtbar im (Remote-)Debugger, falls der Piepton z.B. wegen der
+      // iOS-Autoplay-Regeln doch mal blockiert wird.
+      console.warn('[sound] Pausen-Piepton konnte nicht abgespielt werden:', err)
+      resetAudioSessionType()
+    })
 }
