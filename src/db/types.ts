@@ -68,6 +68,18 @@ export interface SetEntry {
   skipped?: boolean;
 }
 
+// Ein kurzer Freitext-Kommentar zu einer Übung innerhalb einer konkreten Trainingseinheit
+// (z.B. "Schulter hat gezogen", "neue Einstellung an der Maschine"). Ein Kommentar pro
+// Übung/Einheit, erneutes Speichern überschreibt den vorherigen.
+export interface ExerciseNote {
+  id: string;
+  sessionId: string;
+  dayExerciseId: string;
+  exerciseDefId: string;
+  note: string;
+  updatedAt: number;
+}
+
 // Ein Körpergewicht-Eintrag (z.B. morgens nach dem Aufstehen). Ein Eintrag pro Kalendertag,
 // erneutes Speichern am selben Tag überschreibt den vorherigen Wert (dateStr = 'YYYY-MM-DD').
 export interface BodyWeightEntry {

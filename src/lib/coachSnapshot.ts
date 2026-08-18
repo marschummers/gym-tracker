@@ -73,6 +73,9 @@ async function buildSnapshotText(): Promise<string> {
   const dayExercises = await db.dayExercises.bulkGet(dayExerciseIds)
   const dayExerciseById = new Map(dayExercises.filter((d) => d !== undefined).map((d) => [d.id, d]))
 
+  const notes = await db.exerciseNotes.toCollection().filter((n) => sessionIds.has(n.sessionId)).toArray()
+  const noteByKey = new Map(notes.map((n) => [`${n.sessionId}:${n.dayExerciseId}`, n.note]))
+
   lines.push(`Trainingsverlauf (letzte ${TRAINING_HISTORY_DAYS} Tage, ${sessions.length} Einheiten):`)
   if (sessions.length === 0) {
     lines.push('- Keine Trainings in diesem Zeitraum.')
@@ -81,13 +84,14 @@ async function buildSnapshotText(): Promise<string> {
     const dayName = dayById.get(session.dayId)?.name ?? '…'
     lines.push(`${dayName} · ${formatDate(session.startedAt)}`)
 
-    const bySetExercise = new Map<string, { name: string; order: number; sets: string[] }>()
+    const bySetExercise = new Map<string, { name: string; order: number; dayExerciseId: string; sets: string[] }>()
     for (const e of allSetEntries.filter((e) => e.sessionId === session.id)) {
       let group = bySetExercise.get(e.exerciseDefId)
       if (!group) {
         group = {
           name: exerciseDefById.get(e.exerciseDefId)?.name ?? '…',
           order: dayExerciseById.get(e.dayExerciseId)?.order ?? 0,
+          dayExerciseId: e.dayExerciseId,
           sets: [],
         }
         bySetExercise.set(e.exerciseDefId, group)
@@ -96,7 +100,11 @@ async function buildSnapshotText(): Promise<string> {
     }
 
     const groups = [...bySetExercise.values()].sort((a, b) => a.order - b.order)
-    for (const g of groups) lines.push(`- ${g.name}: ${g.sets.join(', ')}`)
+    for (const g of groups) {
+      const note = noteByKey.get(`${session.id}:${g.dayExerciseId}`)
+      const noteSuffix = note ? ` (Notiz: ${note})` : ''
+      lines.push(`- ${g.name}: ${g.sets.join(', ')}${noteSuffix}`)
+    }
   }
 
   return lines.join('\n')

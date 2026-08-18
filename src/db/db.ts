@@ -8,6 +8,7 @@ import type {
   SetEntry,
   BodyWeightEntry,
   AppSettings,
+  ExerciseNote,
 } from './types';
 import { SEED_EXERCISES } from '../data/exerciseSeed';
 
@@ -20,6 +21,7 @@ export const db = new Dexie('gym-tracker') as Dexie & {
   setEntries: EntityTable<SetEntry, 'id'>;
   bodyWeightEntries: EntityTable<BodyWeightEntry, 'id'>;
   appSettings: EntityTable<AppSettings, 'id'>;
+  exerciseNotes: EntityTable<ExerciseNote, 'id'>;
 };
 
 db.version(1).stores({
@@ -56,6 +58,11 @@ db.version(2)
 db.version(3).stores({
   bodyWeightEntries: 'id, dateStr',
   appSettings: 'id',
+});
+
+// Kurze Freitext-Kommentare zu einer Übung innerhalb einer Trainingseinheit.
+db.version(4).stores({
+  exerciseNotes: 'id, sessionId, dayExerciseId',
 });
 
 export function newId(): string {
@@ -191,6 +198,33 @@ export async function upsertBodyWeightEntry(dateStr: string, weight: number) {
 
 export async function setTargetWeight(weight: number | undefined) {
   await db.appSettings.put({ id: 'singleton', targetWeight: weight });
+}
+
+// Legt einen Übungs-Kommentar für eine Trainingseinheit an, überschreibt den bestehenden oder
+// löscht ihn (leerer Text).
+export async function upsertExerciseNote(
+  sessionId: string,
+  dayExerciseId: string,
+  exerciseDefId: string,
+  note: string,
+) {
+  const trimmed = note.trim();
+  const existing = await db.exerciseNotes
+    .where('sessionId')
+    .equals(sessionId)
+    .filter((n) => n.dayExerciseId === dayExerciseId)
+    .first();
+
+  if (!trimmed) {
+    if (existing) await db.exerciseNotes.delete(existing.id);
+    return;
+  }
+
+  if (existing) {
+    await db.exerciseNotes.update(existing.id, { note: trimmed, updatedAt: Date.now() });
+  } else {
+    await db.exerciseNotes.add({ id: newId(), sessionId, dayExerciseId, exerciseDefId, note: trimmed, updatedAt: Date.now() });
+  }
 }
 
 export async function removeAlternativeExercise(exerciseDefId: string, alternativeId: string) {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { db, newId } from '../db/db'
+import { db, newId, upsertExerciseNote } from '../db/db'
 import { playRestEndBeep, unlockAudio } from '../lib/sound'
 import { hasActiveWakeLock, releaseWakeLock, requestWakeLock } from '../lib/wakeLock'
 import GroupedExerciseOptions from '../components/GroupedExerciseOptions'
@@ -39,6 +39,14 @@ export default function WorkoutPage() {
     () => (sessionId ? db.setEntries.where('sessionId').equals(sessionId).toArray() : []),
     [sessionId],
   )
+  const exerciseNotes = useLiveQuery(
+    () => (sessionId ? db.exerciseNotes.where('sessionId').equals(sessionId).toArray() : []),
+    [sessionId],
+  )
+
+  // Welche Notiz-Eingabefelder gerade offen sind + ihr noch nicht gespeicherter Entwurf.
+  const [openNoteIds, setOpenNoteIds] = useState<Record<string, boolean>>({})
+  const [noteInputs, setNoteInputs] = useState<Record<string, string>>({})
 
   const [now, setNow] = useState(Date.now())
   const [restRemaining, setRestRemaining] = useState<number | null>(null)
@@ -221,6 +229,18 @@ export default function WorkoutPage() {
     }
   }
 
+  function toggleNote(deId: string, currentNote: string) {
+    setOpenNoteIds((prev) => ({ ...prev, [deId]: !prev[deId] }))
+    setNoteInputs((prev) => (prev[deId] !== undefined ? prev : { ...prev, [deId]: currentNote }))
+  }
+
+  async function saveNote(deId: string, exerciseDefId: string) {
+    if (!sessionId) return
+    const value = noteInputs[deId] ?? ''
+    await upsertExerciseNote(sessionId, deId, exerciseDefId, value)
+    setOpenNoteIds((prev) => ({ ...prev, [deId]: false }))
+  }
+
   async function finishWorkout() {
     if (!sessionId) return
     if (!confirm('Training beenden?')) return
@@ -292,10 +312,35 @@ export default function WorkoutPage() {
           const loggedSets = (setEntries ?? []).filter((s) => s.dayExerciseId === de.id)
           const setNumbers = Array.from({ length: de.targetSets }, (_, i) => i + 1)
           const allDone = setNumbers.every((n) => loggedSets.some((s) => s.setNumber === n))
+          const note = exerciseNotes?.find((n) => n.dayExerciseId === de.id)
+          const noteOpen = openNoteIds[de.id] ?? false
 
           return (
             <div key={de.id} className="workout-exercise">
-              <h3>{exerciseDefMap.get(activeId)?.name ?? '…'}</h3>
+              <div className="workout-exercise-header">
+                <h3>{exerciseDefMap.get(activeId)?.name ?? '…'}</h3>
+                <button
+                  className="note-toggle-button"
+                  onClick={() => toggleNote(de.id, note?.note ?? '')}
+                  aria-label="Notiz"
+                >
+                  📝
+                </button>
+              </div>
+
+              {noteOpen ? (
+                <input
+                  className="exercise-note-input"
+                  type="text"
+                  placeholder="Kurzer Kommentar zur Übung…"
+                  autoFocus
+                  value={noteInputs[de.id] ?? note?.note ?? ''}
+                  onChange={(e) => setNoteInputs((prev) => ({ ...prev, [de.id]: e.target.value }))}
+                  onBlur={() => saveNote(de.id, activeId)}
+                />
+              ) : (
+                note && <p className="exercise-note-preview">📝 {note.note}</p>
+              )}
 
               {altIds.length > 0 && (
                 <label className="variant-picker">
